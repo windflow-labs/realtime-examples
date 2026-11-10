@@ -1,0 +1,64 @@
+{
+  "date_local": "2026-11-10",
+  "scope": "No-key prerecorded output and explicitly simulated lifecycle/controls; not live inference or an original session event trace.",
+  "files_source": "Existing cleared homepage asset manifests; sources and hashes retained in replay-samples.json.",
+  "observed": {
+    "default_config": {
+      "liveEnabled": false
+    },
+    "token_route_when_replay_only": 409,
+    "local_recording_range_status": 206,
+    "range_requested": "bytes=0-31",
+    "range_bytes_returned": 32,
+    "recording_container_prefix_hex": "1a45dfa3",
+    "served_js_matches_file": true,
+    "served_metadata_matches_file": true,
+    "sample_downloads": [
+      {
+        "model": "lingbot",
+        "bytes": 1183892,
+        "sha256_matches": true,
+        "size_matches": true
+      },
+      {
+        "model": "sana-streaming",
+        "bytes": 975129,
+        "sha256_matches": true,
+        "size_matches": true
+      },
+      {
+        "model": "helios",
+        "bytes": 3258333,
+        "sha256_matches": true,
+        "size_matches": true
+      },
+      {
+        "model": "longlive-v2",
+        "bytes": 2036379,
+        "sha256_matches": true,
+        "size_matches": true
+      }
+    ]
+  },
+  "browser_observation": {
+    "status": "unavailable",
+    "reason": "Computer-use native browser connection failed to initialize; no browser surfaces were returned.",
+    "not_observed": [
+      "actual recorded playback",
+      "startup cancellation",
+      "clip-end cleanup",
+      "restart",
+      "keyboard and prompt feedback",
+      "offline playback in a browser"
+    ]
+  },
+  "paid_inference_calls": 0,
+  "gpu_created": false,
+  "tests_builds_compile_typecheck": "Not run, following repository instructions. HTTP/manual inspection only.",
+  "publication": "Source snapshot for the public v0.2.0 release. Commit, pull request and release receipt are recorded separately after publication.",
+  "startup_guard": {
+    "deadline_ms": 60000,
+    "scope": "One deadline covers replay metadata, browser play() and the first painted frame. First frame or cleanup clears it; timeout/Stop rejects pending startup and clears the media source.",
+    "verification": "Independent source review; browser playback/cancellation remains unobserved."
+  }
+}

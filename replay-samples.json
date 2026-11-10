@@ -1,0 +1,42 @@
+{
+  "lingbot": {
+    "file": "media/lingbot.webm",
+    "source": "https://media.windflow.online/public/site/home-demo-lingbot/ff5a01cc9e911830.webm",
+    "bytes": 1183892,
+    "sha256": "ff5a01cc9e911830dceeecc583e7abeda37cad57480cef4cc1e0c6d9465348eb",
+    "content_type": "video/webm",
+    "source_asset": "home-demo-lingbot.webm.asset.json",
+    "provenance": "LingBot-World 2.0 recording published by Windflow, trimmed to nine seconds. The source asset manifest marks the recording cleared; no original event timeline is included.",
+    "boundary": "Recorded output only. No original event timeline is available; all lifecycle and control events in this example are simulated locally."
+  },
+  "sana-streaming": {
+    "file": "media/sana-streaming.webm",
+    "source": "https://media.windflow.online/public/site/home-demo-sana/66a3a60b303205e7.webm",
+    "bytes": 975129,
+    "sha256": "66a3a60b303205e701d4c4fb478f3af096be7927c5219d3ed270d69a0548fadf",
+    "content_type": "video/webm",
+    "source_asset": "home-demo-sana.webm.asset.json",
+    "provenance": "Existing cleared, prerecorded model output published in the Windflow homepage catalog. No corresponding event trace is included.",
+    "boundary": "Recorded output only. No original event timeline is available; all lifecycle and control events in this example are simulated locally."
+  },
+  "helios": {
+    "file": "media/helios.webm",
+    "source": "https://media.windflow.online/public/site/home-demo-helios/7e93ec7274e9ad66.webm",
+    "bytes": 3258333,
+    "sha256": "7e93ec7274e9ad66a884e670520503279c8a97b6b9c9fe20013350e7fd727c7e",
+    "content_type": "video/webm",
+    "source_asset": "home-demo-helios.webm.asset.json",
+    "provenance": "Existing cleared, prerecorded model output published in the Windflow homepage catalog. No corresponding event trace is included.",
+    "boundary": "Recorded output only. No original event timeline is available; all lifecycle and control events in this example are simulated locally."
+  },
+  "longlive-v2": {
+    "file": "media/longlive-v2.webm",
+    "source": "https://media.windflow.online/public/site/home-demo-longlive/b9819f4c46579a3b.webm",
+    "bytes": 2036379,
+    "sha256": "b9819f4c46579a3bee8298011573ad8fbfa6836d7b791d729cd52110babc69e7",
+    "content_type": "video/webm",
+    "source_asset": "home-demo-longlive.webm.asset.json",
+    "provenance": "Existing cleared, prerecorded model output published in the Windflow homepage catalog. No corresponding event trace is included.",
+    "boundary": "Recorded output only. No original event timeline is available; all lifecycle and control events in this example are simulated locally."
+  }
+}
