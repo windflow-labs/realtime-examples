@@ -7,7 +7,7 @@ async function api(path, jwt, body, options = {}) {
     method: body === undefined ? "GET" : "POST",
     headers: { Authorization: `Bearer ${jwt}`, "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
-    signal: options.keepalive ? undefined : AbortSignal.timeout(30000),
+    signal: AbortSignal.timeout(options.keepalive ? 15000 : 30000),
     ...options,
   });
   const data = await response.json();
@@ -19,10 +19,12 @@ async function api(path, jwt, body, options = {}) {
 export function openSession(model, canvas, onMessage = () => {}) {
   const context = canvas.getContext("2d");
   let current, socket, closed = false, readySettled = false;
+  let opening = true, cleanupPromise, releaseConfirmed = false;
   let latestFrame, painting = false, framesPainted = 0;
   let resolveReady, rejectReady, startupTimer;
   const seen = new Map();
   const waiters = new Set();
+  const cleanups = new Set();
   const releasedConnections = new Set();
   const ready = new Promise((resolve, reject) => { resolveReady = resolve; rejectReady = reject; });
 
@@ -40,31 +42,51 @@ export function openSession(model, canvas, onMessage = () => {}) {
     waiters.clear();
   }
   async function detach(session) {
-    if (!session?.session_id || !session?.connection_id || !session?.jwt) return;
+    if (!session) return true;
+    if (!session.session_id || !session.connection_id || !session.jwt) {
+      emit({ type: "release_unconfirmed", message: `Owner cleanup credentials are incomplete for session ${session.session_id || "(unknown)"}. Do not start another session. Release it in your dashboard; retry here if credentials become available.` });
+      return false;
+    }
     const key = `${session.session_id}:${session.connection_id}`;
-    if (releasedConnections.has(key)) return;
+    if (releasedConnections.has(key)) return true;
     releasedConnections.add(key);
     try {
       const result = await api(`/v1/sessions/${encodeURIComponent(session.session_id)}`, session.jwt,
         { action: "detach", connection_id: session.connection_id, release: true }, { keepalive: true });
       if (result.session_released !== true) throw new Error("Release was not confirmed.");
-      emit({ type: "released", confirmed: true });
+      return true;
     } catch {
       releasedConnections.delete(key);
-      emit({ type: "release_unconfirmed", message: "Release was not confirmed. Check the dashboard and release any remaining session." });
+      emit({ type: "release_unconfirmed", message: `Release was not confirmed for session ${session.session_id}. Start stays locked. Retry release or check your dashboard.` });
+      return false;
     }
   }
-  async function release() {
+  function release() {
     closed = true;
     latestFrame = undefined;
     stopWaiters(new Error("Session released."));
+    for (const cleanup of [...cleanups]) { try { cleanup(); } catch { /* Continue owner cleanup. */ } }
+    cleanups.clear();
     socket?.close();
-    await detach(current);
+    if (cleanupPromise) return cleanupPromise;
+    cleanupPromise = (async () => {
+      const confirmed = await detach(current);
+      if (!confirmed) return false;
+      if (opening) {
+        emit({ type: "release_pending", message: "Waiting for an in-flight startup request before confirming cleanup. Start stays locked." });
+        return false;
+      }
+      releaseConfirmed = true;
+      emit({ type: "released", confirmed: true });
+      return true;
+    })().finally(() => { cleanupPromise = undefined; });
+    return cleanupPromise;
   }
   async function adopt(session) {
     current = session;
-    if (closed) { await detach(session); throw new Error("Session released."); }
+    if (closed) { await release(); throw new Error("Session released."); }
     if (!session.session_id || !session.jwt) throw new Error("Incomplete session response.");
+    if (!session.connection_id) throw new Error(`Session ${session.session_id} has no owner connection credential. Generation will not start; check the dashboard.`);
   }
   function fail(error) {
     if (closed) return;
@@ -118,7 +140,7 @@ export function openSession(model, canvas, onMessage = () => {}) {
             { model, session_id: current.session_id, transport: "ws-h264" }));
         } else current.queue_position = poll.queue_position;
       }
-      if (closed) { await detach(current); return; }
+      if (closed) { await release(); return; }
       const offer = current.transport?.offers?.find((item) => item.kind === "ws-h264");
       if (!offer?.relay_path || !offer.launch_token) throw new Error("No WebSocket media offer available.");
       const url = new URL(offer.relay_path, API);
@@ -147,7 +169,14 @@ export function openSession(model, canvas, onMessage = () => {}) {
       socket.onclose = ({ code }) => {
         if (!closed) fail(new Error(`Media connection closed (${code}).`));
       };
-    } catch (error) { stopWaiters(error); if (!closed) emit({ type: "example_error", message: error.message }); await release(); }
+    } catch (error) {
+      stopWaiters(error);
+      if (!closed) emit({ type: "example_error", message: error.message });
+      await release();
+    } finally {
+      opening = false;
+      if (closed) await release();
+    }
   })();
   // A caller may release before it reaches `await ready`.
   ready.catch(() => {});
@@ -155,7 +184,13 @@ export function openSession(model, canvas, onMessage = () => {}) {
   return {
     ready, release,
     get closed() { return closed; },
+    get releaseConfirmed() { return releaseConfirmed; },
     get socket() { return socket; },
+    addCleanup(cleanup) {
+      if (closed) { cleanup(); return () => {}; }
+      cleanups.add(cleanup);
+      return () => { cleanups.delete(cleanup); };
+    },
     waitFor(type, timeout = 30000) {
       if (closed) return Promise.reject(new Error("Session released."));
       if (seen.has(type)) return Promise.resolve(seen.get(type));
@@ -198,11 +233,17 @@ export async function sendCamera(session, hello, video) {
   const maxWidth = Number.isFinite(announcedWidth) && announcedWidth >= 2 ? Math.min(1280, announcedWidth) : 1280;
   const media = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
   let timer, stopped = false, busy = false;
+  let unregister = () => {};
   const stop = () => {
+    if (stopped) return;
     stopped = true; clearInterval(timer);
+    unregister();
     media.getTracks().forEach((track) => track.stop());
     video.pause(); video.srcObject = null;
   };
+  // Register before play(): playback can wait while the tab is backgrounded.
+  // A release must stop acquired camera tracks even before this function resolves.
+  unregister = session.addCleanup(stop);
   if (session.closed) { stop(); throw new Error("Session released while requesting camera access."); }
   try {
     video.srcObject = media; await video.play();

@@ -8,7 +8,7 @@ const defaults = {
   helios: { prompt: "A lighthouse on a sea cliff in a storm, slow push-in", guide: "helios-api", note: "Start with a prompt and an optional image. Apply a new prompt while the stream runs." },
   "longlive-v2": { prompt: "A chef chops vegetables in a quiet kitchen at dawn, medium shot", guide: "longlive-2-api", note: "Apply prompt makes a soft shot transition. Cut to new scene clears the rolling scene context." },
 };
-let active, stopCamera, visible = false, actionBusy = false, inputSequence = 0;
+let active, stopCamera, visible = false, actionBusy = false, releasing = false, inputSequence = 0;
 const held = new Set();
 const keyMap = { KeyW: "forward", KeyS: "back", KeyA: "left", KeyD: "right", ArrowLeft: "look_left", ArrowRight: "look_right" };
 
@@ -23,7 +23,8 @@ function buttons() {
   const busy = Boolean(active);
   model.disabled = busy; image.disabled = busy;
   $("start").disabled = busy || actionBusy;
-  $("release").disabled = !busy;
+  $("release").disabled = !busy || releasing;
+  $("release").textContent = active?.closed ? "Retry release" : "Release session";
   $("update").disabled = !busy || !visible || actionBusy;
   $("cut").disabled = !busy || !visible || actionBusy;
 }
@@ -34,10 +35,14 @@ function clearKeys() {
 async function stop() {
   const run = active;
   clearKeys(); stopCamera?.(); stopCamera = undefined;
-  visible = false; buttons();
-  if (run) { status("Releasing session…"); await run.release(); }
-  if (active === run) active = undefined;
-  buttons();
+  visible = false; releasing = true; buttons();
+  try {
+    if (run) {
+      status("Releasing session…");
+      const confirmed = await run.release();
+      if (confirmed && active === run) active = undefined;
+    }
+  } finally { releasing = false; buttons(); }
 }
 function configure() {
   const config = defaults[model.value];
@@ -67,12 +72,15 @@ $("controls").addEventListener("submit", async (e) => {
     event(message.type);
     if (message.type === "queued") status(`Waiting for model capacity${message.position == null ? "" : ` · position ${message.position}`}. Release cancels the queue ticket.`);
     if (message.type === "first_frame_visible") { visible = true; status("Live output is visible. Release the session when finished."); buttons(); }
-    if (message.type === "released") status("Session release confirmed.");
+    if (message.type === "released") { status("Session cleanup confirmed."); visible = false; active = undefined; buttons(); }
+    if (message.type === "release_pending") status(message.message);
     if (message.type === "release_unconfirmed") status(message.message);
     if (message.type === "example_error") { status(message.message); stopCamera?.(); stopCamera = undefined; }
     if (message.type === "session_ended" || message.type === "example_error") {
       visible = false;
-      if (active === run) active = undefined;
+      stopCamera?.(); stopCamera = undefined;
+      // Keep the handle so the later cleanup result remains visible and
+      // an unconfirmed release cannot silently unlock another paid session.
       buttons();
     }
     if (message.type === "command_error") status("The model rejected a command. Check the guide for supported controls.");
@@ -99,7 +107,7 @@ $("controls").addEventListener("submit", async (e) => {
   } catch (error) {
     if (active === run) await stop();
     else await run.release();
-    status(error.message);
+    if (run.releaseConfirmed) status(`${error.message} Session cleanup confirmed.`);
   } finally { actionBusy = false; buttons(); }
 });
 $("release").addEventListener("click", () => { void stop(); });
