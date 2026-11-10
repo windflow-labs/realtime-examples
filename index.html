@@ -8,20 +8,23 @@
 </head>
 <body>
   <main>
-    <header><a href="https://windflow.online">Windflow</a><span>Browser API examples · Private beta</span></header>
-    <h1>One live session.<br>Four kinds of control.</h1>
-    <p class="intro">Connect an approved API account, choose a model, and send prompts, camera frames or movement. This is a paid live example, with each new session limited to 180 seconds.</p>
+    <header><a href="https://windflow.online">Windflow</a><span>Browser examples · Replay first, optional paid live mode</span></header>
+    <h1>Explore four kinds<br>of realtime control.</h1>
+    <p class="intro">Start with recorded model output and a local lifecycle simulation. No API key, inference request or camera permission is needed for replay. An approved account can separately enable paid live sessions.</p>
+    <p id="replay-boundary" class="mode-note"><strong>Replay: prerecorded video + simulated controls.</strong> This is not live inference or a recorded event trace. Prompts and keys are logged locally and do not change the video. Samples load from their existing public media source unless downloaded for offline use.</p>
     <form id="controls">
+      <label>Mode<select id="mode"><option value="replay">Replay — no key, no inference</option><option id="live-option" value="live" disabled>Paid live — requires server --live and an approved account</option></select></label>
       <label>Model<select id="model"><option value="lingbot">LingBot-World — navigable world</option><option value="sana-streaming">SANA-Streaming — webcam editing</option><option value="helios">Helios — continuous video</option><option value="longlive-v2">LongLive 2.0 — shot direction</option></select></label>
-      <label>Prompt<textarea id="prompt" rows="3" maxlength="4000" required>A misty pine forest trail at dawn, cinematic natural light</textarea></label>
-      <label id="image-field">Seed image <span id="image-note">required</span><input id="image" type="file" accept="image/*"></label>
+      <label><span id="prompt-label">Simulated prompt</span><textarea id="prompt" rows="3" maxlength="4000" required>A misty pine forest trail at dawn, cinematic natural light</textarea></label>
+      <label id="image-field" hidden>Seed image <span id="image-note">required</span><input id="image" type="file" accept="image/*"></label>
       <p id="model-note">Choose an image you can use, then explore with W/A/S/D and look with ←/→.</p>
-      <div class="buttons"><button id="start" type="submit">Start paid session</button><button id="release" type="button" disabled>Release session</button><button id="update" type="button" disabled>Apply prompt</button><button id="cut" type="button" hidden disabled>Cut to new scene</button></div>
+      <div class="buttons"><button id="start" type="submit">Play recorded sample</button><button id="release" type="button" disabled>Stop replay</button><button id="update" type="button" disabled>Apply prompt</button><button id="cut" type="button" hidden disabled>Cut to new scene</button></div>
     </form>
-    <p id="status" role="status" aria-live="polite">Ready to connect. No session has been created.</p>
-    <div class="screens"><figure><canvas id="output" width="1280" height="704" tabindex="0" aria-label="Generated output; focus here for world movement"></canvas><figcaption>Generated output · movement enables after the first painted frame</figcaption></figure><figure id="camera-panel" hidden><video id="camera" muted playsinline autoplay></video><figcaption>Your camera · sent to the model only during this session</figcaption></figure></div>
-    <p class="billing">Queueing and startup are free. Billing begins when generation starts and continues until release or session end, even when playback is paused. Closing a page only attempts cleanup; confirm release in your dashboard if it fails. See <a href="https://windflow.online/pricing">current prices</a>.</p>
-    <details><summary>Connection events</summary><ol id="events"></ol></details>
+    <p id="status" role="status" aria-live="polite">Replay is ready. No API session has been created.</p>
+    <div class="screens"><figure><canvas id="output" width="1280" height="704" tabindex="0" aria-label="Prerecorded model output; controls are simulated"></canvas><figcaption id="output-caption">Prerecorded output · controls are simulated and do not change the video</figcaption></figure><figure id="camera-panel" hidden><video id="camera" muted playsinline autoplay></video><figcaption>Your camera · sent to the model only during this session</figcaption></figure></div>
+    <p id="control-feedback" role="status" aria-live="polite">No controls have been simulated.</p>
+    <p id="live-billing" class="billing" hidden>Queueing and startup are free. Billing begins when generation starts and continues until release or session end, even when playback is paused. Closing a page only attempts cleanup; confirm release in your dashboard if it fails. See <a href="https://windflow.online/pricing">current prices</a>.</p>
+    <details><summary>Local lifecycle log · replay events are labeled SIMULATED or LOCAL</summary><ol id="events"></ol></details>
     <footer><a id="guide" href="https://windflow.online/guides/lingbot-api">Model integration guide</a><a href="https://windflow.online/guides/measure-realtime-video-latency">How to measure responsiveness</a><a href="https://windflow.online/auth?mode=request">Request beta access</a></footer>
   </main>
   <script type="module" src="/app.js"></script>
